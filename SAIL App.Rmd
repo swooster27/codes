@@ -25,7 +25,7 @@ cbb21read<- read_csv("/Users/sarahwooster/Library/Mobile Documents/com~apple~Clo
 cbb21 = select(cbb21read, -SEED)
 #SEED for some reason is incompatible with correlations and models.
 ```
-  Similar to any other business, a sports team has limited resources that they must optimize their performance with. This leads to the question of whether the resources would be better suited in aiding the offense or defense. I began my analysis with the exploration of this question using Andrew Sundberg’s College Basketball Dataset via Kaggle. Two of the useful variables supplied were ADJOE and ADJDE which represent the adjusted offensive efficiency and adjusted defensive efficiency, respectively. The correlation between these variables and the number of wins (W) was intriguing. Offensive efficiency was positively correlated with the number of wins with an r of .69, but defensive efficiency was negatively correlated with an r of -.63. The correlations imply that a better offense will lead to more wins, but a better defense will actually lead to less wins.
+  Similar to any other business, a sports team has limited resources that they must optimize their performance with. This leads to the question of whether the resources would be better suited in aiding the offense or defense. I began my analysis with the exploration of this question using Andrew Sundberg’s College Basketball Dataset via Kaggle. Two of the useful variables supplied were ADJOE and ADJDE which represent the adjusted offensive efficiency and adjusted defensive efficiency, respectively. The correlation between these variables and the number of wins (W) was intriguing. Offensive efficiency was positively correlated with the number of wins with an r of .69, but defensive efficiency was negatively correlated with an r of -.63. The correlations imply that a better offense will lead to more wins, but a better defense will actually lead to fewer wins.
 ```{r, include = F}
 cbb21 %>%
   group_by(CONF) %>%
@@ -45,7 +45,7 @@ corrplot(cor(select(cbb21, where(is.numeric))), method = 'number', type="upper",
 ```
 <br />
 
-As to why this is, as offensive quality increases, defensive quality decreases.This refers to the dilemma presented earlier, resources must be allocated to either offense or defense—not both. Any basketball fan would inform you offense is more important than defense, so this is not a novel discovery.
+As to why this is, as offensive quality increases, defensive quality decreases. This refers to the dilemma presented earlier, resources must be allocated to either offense or defense—not both. Any basketball fan would inform that you offense is more important than defense, so this is not a novel discovery.
 
 
 ```{r, echo = F}
@@ -54,7 +54,7 @@ print_html(model_parameters(bblm))
 ```
 <br />
 
-In more exploration of this topic, a model to predict wins using number of games, offensive efficiency, and defensive efficiency was created. Even when controlling for the number of games, offense significantly increases the number of wins. One point in offensive efficiency adds almost a third of a win (T = 9.4, p < .001). Furthermore, One point in defensive efficiency leads to a decrease of just over .2 of a win (T = -6.29, p < .001)
+In more exploration of this topic, a model to predict wins using the number of games, offensive efficiency, and defensive efficiency was created. Even when controlling for the number of games, offense significantly increases the number of wins. One point in offensive efficiency adds almost a third of a win (T = 9.4, p < .001). Furthermore, one point in defensive efficiency leads to a decrease of just over .2 of a win (T = -6.29, p < .001)
 
 ```{r, include = F}
 conflm = lm(W~CONF, data= cbb21)
@@ -86,7 +86,7 @@ output %>%
 
 <br />
 
-As a final observation of offense versus defense, a branch-and-bound algorithm was used to determine the best model for predicting wins. The matrix depicted indicated what variables would be added at each allowed number of variables. It is clear that offense is the primary determinant for a successful team, as it is the first variables added. These graphs statistically reaffirms what every basketball coach—and even fan— would tell you: offense is key.
+As a final observation of offense versus defense, a branch-and-bound algorithm was used to determine the best model for predicting wins. The matrix depicted indicated what variables would be added at each allowed number of variables. It is clear that offense is the primary determinant for a successful team, as it is the first variable added. These graphs statistically reaffirm what every basketball coach—and even fan— would tell you: offense is key.
 
 
 
@@ -103,9 +103,9 @@ cbb21 %>%
 ```
 
 <br />
-  As indicated by the chart above, some conferences preform better offensively or defensively. Generally conferences are created based on the location of the school, not the performance of the team If conferences were to be assigned based on their offensive or defensive efficiency, it may create an environment for college basketball that facilitates increased innovation in the sport.The benefit of grouping the teams based on their offensive quality instead of geographical based conferences is questioned. In order to create a portfolio of conferences, I selected wins, offensive efficiency metric, turnover over rate, and effective field goal percentage (shot). These variables act as quantitative representations for how the teams perform offensively, as that is the primary factor in determining a successful team.
-  In order to create new conferences, a k-means clustering method is used. K-means clustering partitions the teams into a indicated number of clusters, k, based on their distance to the cluster's mean, the centroid, which is calculated using the factors provides. In the new conferences case, the factors will the offense variables.
-
+  As indicated by the chart above, some conferences perform better offensively or defensively. Generally, conferences are created based on the location of the school, not the performance of the team. If conferences were to be assigned based on their offensive or defensive efficiency, it may create an environment for college basketball that facilitates increased innovation in the sport. The benefit of grouping the teams based on their offensive quality instead of geographical-based conferences is questioned. In order to create a portfolio of conferences, I selected the number of wins, offensive efficiency metric, turnover over rate, and effective field goal percentage (shot). These variables act as quantitative representations of how the teams perform offensively, as that is the primary factor in determining a successful team.
+  In order to create new conferences, a k-means clustering method is used. K-means clustering partitions the teams into a fixed number of clusters, k, based on their distance to the cluster's mean, the centroid, which is calculated using the factors provides. In the case of the new conferences, the factors will be the offense variables.
+  
 ```{r, include = F}
 kdf = select(bbnum, c(W,ADJOE, TOR, EFG_O))
 ```
@@ -157,7 +157,7 @@ final %>%
   kable_classic_2(full_width = F)
 ```
 <br />
-  The graph above provides the means of the variable for each cluster. Cluster 1 is the premier conference with the highest number of wins, adjusted offensive efficiency, and effective field goal percentage and the lowest turnover rate. Conversely, Cluster 3 is the lowest performing conference. Although it was not considered during the clusteriung, the mean adjusted defensive efficiency is shown to emphasize that Cluster 3 is outperforming the other clusters defensively. The goal of the new conferences would be that the better offensive teams would learn to focus more on defense to prevent the other team from scoring just as much as they do, and the better defensive teams would do the same in offense.
+  The graph above provides the means of the variable for each cluster. Cluster 1 is the premier conference with the highest number of wins, adjusted offensive efficiency, and effective field goal percentage and the lowest turnover rate. Conversely, Cluster 3 is the lowest performing conference. Although it was not considered during the clustering, the mean adjusted defensive efficiency is shown to emphasize that Cluster 3 is outperforming the other clusters defensively. The goal of the new conferences would be that the better offensive teams would learn to focus more on defense to prevent the other team from scoring just as much as they do, and the better defensive teams would do the same in offensive strategy.
 ```{r, echo = F}
 newconf = data.frame('CONF_1' = head(filter(final, cluster_group == 1)$TEAM), 'CONF_2' = head(filter(final, cluster_group == 2)$TEAM), 'CONF_3' = head(filter(final, cluster_group == 3)$TEAM), 'CONF_4' = head(filter(final, cluster_group == 4)$TEAM), 'CONF_5' = head(filter(final, cluster_group == 5)$TEAM), 'CONF_6' = head(filter(final, cluster_group == 6)$TEAM))
 newconf %>%
@@ -166,4 +166,4 @@ newconf %>%
   kable_classic_2(full_width = F)
 ```
 <br />
-  This is a brief glimpse of what the newly formed conferences would look like. As you can see, they are no longer grouped by factors such as region, but rather by their offensive status. The mission in this analysis was to critically examine how offense and defense is used in college basketball, and how teams can enhance their performance by balancing both sides. The new conferences would be an incentive to the teams to innovate their payign strategy, and would improve the watching experience of fans by creating suspense with closer matched teams.
+  This is a brief glimpse of what the newly formed conferences would look like. As you can see, they are no longer grouped by factors such as region, but rather by their offensive status. The mission of this analysis was to critically examine how offense and defense are used in college basketball, and how teams can enhance their performance by balancing both sides. The new conferences would be an incentive for the teams to innovate their playing strategy and would improve the watching experience of fans by creating suspense with more closely matched teams.
