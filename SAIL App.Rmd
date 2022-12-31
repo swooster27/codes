@@ -1,0 +1,169 @@
+---
+title: "SAIL Application - Conferences based on Offensive Performance"
+author: 'Sarah Wooster'
+output:
+  html_document: default
+date: "2022-12-19"
+---
+# Initial Analysis of Offense vs. Defense
+```{r, include = F}
+library(readr)
+library(dplyr)
+library(leaps)
+library(sjmisc)
+library(sjlabelled)
+library(corrplot)
+library(sjPlot)
+library(ggplot2)
+library(gt)
+library(parameters)
+library(factoextra)
+library(kableExtra)
+cbb21read<- read_csv("/Users/sarahwooster/Library/Mobile Documents/com~apple~CloudDocs/Documents/archive/cbb21.csv")
+```
+```{r, include = F}
+cbb21 = select(cbb21read, -SEED)
+#SEED for some reason is incompatible with correlations and models.
+```
+  Similar to any other business, a sports team has limited resources that they must optimize their performance with. This leads to the question of whether the resources would be better suited in aiding the offense or defense. I began my analysis with the exploration of this question using Andrew Sundberg’s College Basketball Dataset via Kaggle. Two of the useful variables supplied were ADJOE and ADJDE which represent the adjusted offensive efficiency and adjusted defensive efficiency, respectively. The correlation between these variables and the number of wins (W) was intriguing. Offensive efficiency was positively correlated with the number of wins with an r of .69, but defensive efficiency was negatively correlated with an r of -.63. The correlations imply that a better offense will lead to more wins, but a better defense will actually lead to less wins.
+```{r, include = F}
+cbb21 %>%
+  group_by(CONF) %>%
+  summarise_if(is.numeric, 'mean') %>%
+  select(CONF:TORD) %>%
+  kbl(col.names = NA) %>%
+  kable_classic(full_width = F)
+cbb21 %>%
+  group_by(CONF) %>%
+  summarise_if(is.numeric, 'mean') %>%
+  select(ORB:WAB) %>%
+  kbl(col.names = NA) %>%
+  kable_classic(full_width = F)
+```
+```{r message = F, echo = F,}
+corrplot(cor(select(cbb21, where(is.numeric))), method = 'number', type="upper",  number.cex=0.5, cl.align = 'c')
+```
+<br />
+
+As to why this is, as offensive quality increases, defensive quality decreases.This refers to the dilemma presented earlier, resources must be allocated to either offense or defense—not both. Any basketball fan would inform you offense is more important than defense, so this is not a novel discovery.
+
+
+```{r, echo = F}
+bblm = lm(W~ADJOE + ADJDE + G, data= cbb21)
+print_html(model_parameters(bblm))
+```
+<br />
+
+In more exploration of this topic, a model to predict wins using number of games, offensive efficiency, and defensive efficiency was created. Even when controlling for the number of games, offense significantly increases the number of wins. One point in offensive efficiency adds almost a third of a win (T = 9.4, p < .001). Furthermore, One point in defensive efficiency leads to a decrease of just over .2 of a win (T = -6.29, p < .001)
+
+```{r, include = F}
+conflm = lm(W~CONF, data= cbb21)
+summary(conflm)
+#What conferences are better at winning?
+```
+
+```{r, include = F}
+bbnum = select_if(cbb21, is.numeric)
+```
+
+```{r Stepwise Regression, eval = F, echo = F}
+none = lm(W~1, data=bbnum)
+Full = lm(W~., data = bbnum)
+MSE = (summary(Full)$sigma)^2
+step(none, scope=list(upper=Full), scale=MSE, trace=F)
+#This usually Mean Squared Error to find the best model. I chose another method because I was unabke to choose how many variables 
+```
+
+```{r, echo = F}
+subbb = select(bbnum, c(-WAB, -BARTHAG))
+#removing these because they are already represented by other variables. 
+all = regsubsets(W~., data = subbb, nvmax=16)
+output = summary(all)$outmat
+output %>%
+  kbl(col.names = NA) %>%
+  kable_classic(full_width = F)
+```
+
+<br />
+
+As a final observation of offense versus defense, a branch-and-bound algorithm was used to determine the best model for predicting wins. The matrix depicted indicated what variables would be added at each allowed number of variables. It is clear that offense is the primary determinant for a successful team, as it is the first variables added. These graphs statistically reaffirms what every basketball coach—and even fan— would tell you: offense is key.
+
+
+
+# K-mean Clustering
+
+```{r, echo = F}
+cbb21 %>%
+  group_by(CONF) %>%
+  summarise('MEANO' = mean(ADJOE), 'MEAND' = mean(ADJDE), 'SDO' = sd(ADJOE), 'SDD' = sd(ADJDE)) %>%
+  select(CONF, MEANO, MEAND, SDO, SDD) %>%
+  ungroup() %>%
+  kbl(col.names = NA) %>%
+  kable_classic(full_width = F)
+```
+
+<br />
+  As indicated by the chart above, some conferences preform better offensively or defensively. Generally conferences are created based on the location of the school, not the performance of the team If conferences were to be assigned based on their offensive or defensive efficiency, it may create an environment for college basketball that facilitates increased innovation in the sport.The benefit of grouping the teams based on their offensive quality instead of geographical based conferences is questioned. In order to create a portfolio of conferences, I selected wins, offensive efficiency metric, turnover over rate, and effective field goal percentage (shot). These variables act as quantitative representations for how the teams perform offensively, as that is the primary factor in determining a successful team.
+  In order to create new conferences, a k-means clustering method is used. K-means clustering partitions the teams into a indicated number of clusters, k, based on their distance to the cluster's mean, the centroid, which is calculated using the factors provides. In the new conferences case, the factors will the offense variables.
+
+```{r, include = F}
+kdf = select(bbnum, c(W,ADJOE, TOR, EFG_O))
+```
+
+
+```{r, echo = F}
+wssplot <- function(data, nc=15, seed=1234){
+  wss <- (nrow(data)-1)*sum(apply(data,2,var))
+  for (i in 2:nc){
+    set.seed(seed)
+    wss[i] <- sum(kmeans(data, centers=i)$withinss)}
+  plot(1:nc, wss, type="b", xlab="Number of Clusters",
+       ylab="Within groups sum of squares")
+}
+wssplot(kdf)
+```
+<br />
+
+Although using the elbow method in k-means clustering is usual for finding "optimal" k, in the real world it has little use. We would choose the number of conferences based on the need of the teams, advertisers, and other stakeholders in the sports world; however, without that information, the number will be chosen using the elbow method, and there is a possible elbow at k = 6. 
+
+```{r, echo = F}
+km4<-kmeans(kdf, centers = 6, nstart = 25)
+fviz_cluster(km4, data =kdf)
+```
+<br />
+The plot above is a visualization of the new conferences created. Graphically, it is clear that many teams overlap with each other in performance, as generally teams are not vastly different.
+```{r, include = F}
+kdf2 <- kdf %>%
+ mutate(cluster_group = km4$cluster)
+bb.aov<-aov(W~as.factor(cluster_group), data = kdf2)
+plot(bb.aov)
+```
+
+```{r, include = F}
+summary(bb.aov)
+TukeyHSD(bb.aov)
+```
+
+```{r, include = F}
+final = cbind(cbb21, kdf2[,5])
+```
+
+```{r, echo= F}
+final %>%
+  group_by(cluster_group) %>%
+  summarise_if(is.numeric, 'mean') %>%
+  select(c(cluster_group, W,ADJOE, TOR, EFG_O, ADJDE))  %>%
+  kbl(col.names = NA) %>%
+  kable_classic_2(full_width = F)
+```
+<br />
+  The graph above provides the means of the variable for each cluster. Cluster 1 is the premier conference with the highest number of wins, adjusted offensive efficiency, and effective field goal percentage and the lowest turnover rate. Conversely, Cluster 3 is the lowest performing conference. Although it was not considered during the clusteriung, the mean adjusted defensive efficiency is shown to emphasize that Cluster 3 is outperforming the other clusters defensively. The goal of the new conferences would be that the better offensive teams would learn to focus more on defense to prevent the other team from scoring just as much as they do, and the better defensive teams would do the same in offense.
+```{r, echo = F}
+newconf = data.frame('CONF_1' = head(filter(final, cluster_group == 1)$TEAM), 'CONF_2' = head(filter(final, cluster_group == 2)$TEAM), 'CONF_3' = head(filter(final, cluster_group == 3)$TEAM), 'CONF_4' = head(filter(final, cluster_group == 4)$TEAM), 'CONF_5' = head(filter(final, cluster_group == 5)$TEAM), 'CONF_6' = head(filter(final, cluster_group == 6)$TEAM))
+newconf %>%
+  kbl(col.names = NA) %>%
+
+  kable_classic_2(full_width = F)
+```
+<br />
+  This is a brief glimpse of what the newly formed conferences would look like. As you can see, they are no longer grouped by factors such as region, but rather by their offensive status. The mission in this analysis was to critically examine how offense and defense is used in college basketball, and how teams can enhance their performance by balancing both sides. The new conferences would be an incentive to the teams to innovate their payign strategy, and would improve the watching experience of fans by creating suspense with closer matched teams.
